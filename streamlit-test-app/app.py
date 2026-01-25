@@ -106,7 +106,7 @@ def get_connection(http_path: str):
         st.info("🔌 Step 2: Connecting to SQL Warehouse...")
         st.code(f"server_hostname: {cfg.host}")
         st.code(f"http_path: {http_path}")
-        st.code(f"credentials_provider: lambda: cfg.authenticate()")
+        st.code("credentials_provider: lambda: cfg.authenticate()")
 
         conn = sql.connect(
             server_hostname=cfg.host,
@@ -171,7 +171,7 @@ def read_table(
             st.info("🔌 Step 1b: Connecting to SQL Warehouse...")
             st.code(f"server_hostname: {cfg.host}")
             st.code(f"http_path: {http_path}")
-            st.code(f"credentials_provider: lambda: cfg.authenticate (NO parentheses)")
+            st.code("credentials_provider: lambda: cfg.authenticate (NO parentheses)")
 
             conn = sql.connect(
                 server_hostname=cfg.host,
@@ -203,7 +203,7 @@ def read_table(
 
         # Step 3: Execute query
         try:
-            st.info(f"🔍 Step 4: Executing query...")
+            st.info("🔍 Step 4: Executing query...")
             query = f"SELECT * FROM {table_name}"
             cursor.execute(query)
             st.success("✅ Query executed!")
@@ -219,7 +219,7 @@ def read_table(
         try:
             st.info("📥 Step 5: Fetching results via Arrow format...")
             arrow_table = cursor.fetchall_arrow()
-            st.success(f"✅ Fetched Arrow table!")
+            st.success("✅ Fetched Arrow table!")
         except Exception as fetch_error:
             st.error(
                 f"❌ Failed to fetch Arrow data: {type(fetch_error).__name__}: {fetch_error}"
@@ -358,8 +358,8 @@ def parse_xgb_schema():
 
 tabs = st.tabs(
     [
-        "ARIMA Forecasting",
-        "XGBoost Point Prediction",
+        "ARIMA Served",
+        "XGBoost Served",
         "ARIMA MLflow",
         "XGBoost MLflow",
     ]

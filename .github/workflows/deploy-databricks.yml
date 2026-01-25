@@ -5,7 +5,7 @@ on:
     # Trigger on all branches (main/develop will go to prod/staging, others to dev)
     # Removed paths filter to trigger on any push - you can add it back if needed
     # paths:
-    #   - 'streamlit-hello-world-app/**'
+    #   - 'streamlit-test-app/**'
     #   - 'databricks.yml'
     #   - '.github/workflows/deploy-databricks.yml'
   pull_request:
@@ -13,7 +13,7 @@ on:
       - main
     # Removed paths filter for PRs as well
     # paths:
-    #   - 'streamlit-hello-world-app/**'
+    #   - 'streamlit-test-app/**'
     #   - 'databricks.yml'
   workflow_dispatch:
     inputs:
@@ -169,20 +169,20 @@ jobs:
       - name: Verify source code files exist
         run: |
           echo "🔍 Verifying app source code..."
-          if [ ! -d "streamlit-hello-world-app" ]; then
-            echo "❌ ERROR: streamlit-hello-world-app directory not found!"
+          if [ ! -d "streamlit-test-app" ]; then
+            echo "❌ ERROR: streamlit-test-app directory not found!"
             exit 1
           fi
-          echo "✅ Found streamlit-hello-world-app directory"
+          echo "✅ Found streamlit-test-app directory"
           echo "📄 Files to be deployed:"
-          ls -la streamlit-hello-world-app/ | head -20
-          if [ ! -f "streamlit-hello-world-app/app.yaml" ]; then
-            echo "⚠️ WARNING: app.yaml not found in streamlit-hello-world-app/"
+          ls -la streamlit-test-app/ | head -20
+          if [ ! -f "streamlit-test-app/app.yaml" ]; then
+            echo "⚠️ WARNING: app.yaml not found in streamlit-test-app/"
           else
             echo "✅ Found app.yaml"
           fi
-          if [ ! -f "streamlit-hello-world-app/app.py" ]; then
-            echo "⚠️ WARNING: app.py not found in streamlit-hello-world-app/"
+          if [ ! -f "streamlit-test-app/app.py" ]; then
+            echo "⚠️ WARNING: app.py not found in streamlit-test-app/"
           else
             echo "✅ Found app.py"
           fi
@@ -197,7 +197,7 @@ jobs:
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
           APP_NAME="${{ steps.app_name.outputs.app_name }}"
-          APP_PATH="streamlit-hello-world-app"
+          APP_PATH="streamlit-test-app"
           
           echo "🆕 Creating app first (bundle requires app to exist): $APP_NAME"
           echo "📁 App source path: $APP_PATH"
@@ -221,12 +221,12 @@ jobs:
           export DATABRICKS_TOKEN
           export DATABRICKS_BUNDLE_VAR_app_manager_email
           echo "📦 Deploying bundle to ${{ steps.target.outputs.target }} environment..."
-          echo "📁 Source code path: streamlit-hello-world-app"
-          echo "📝 This will upload all files from streamlit-hello-world-app/ to Databricks"
+          echo "📁 Source code path: streamlit-test-app"
+          echo "📝 This will upload all files from streamlit-test-app/ to Databricks"
           
           # Deploy the bundle - this uploads source code from source_code_path and updates the app
           # The bundle deploy command:
-          # 1. Uploads all files from streamlit-hello-world-app/ to the workspace
+          # 1. Uploads all files from streamlit-test-app/ to the workspace
           # 2. Updates the app configuration
           # 3. Ensures the app points to the latest code
           databricks bundle deploy -t ${{ steps.target.outputs.target }} --var app_manager_email="$DATABRICKS_BUNDLE_VAR_app_manager_email"
@@ -281,9 +281,9 @@ jobs:
             echo "⚠️ Bundle run failed, trying direct apps deploy..."
             # Fallback: use apps deploy with app name as positional argument
             # Get the workspace path where bundle deployed the app
-            BUNDLE_PATH="~/.bundle/databricks/${{ steps.target.outputs.target }}/files/streamlit-hello-world-app"
+            BUNDLE_PATH="~/.bundle/databricks/${{ steps.target.outputs.target }}/files/streamlit-test-app"
             if [ "${{ steps.target.outputs.target }}" == "prod" ]; then
-              BUNDLE_PATH="/Workspace/.bundle/databricks/${{ steps.target.outputs.target }}/files/streamlit-hello-world-app"
+              BUNDLE_PATH="/Workspace/.bundle/databricks/${{ steps.target.outputs.target }}/files/streamlit-test-app"
             fi
             
             # Deploy the app using the source code path from bundle

@@ -7,7 +7,7 @@ This project contains a Streamlit application for JARDIANCE Sales Forecasting, c
 ```
 databricks/
 ├── databricks.yml              # DABS bundle configuration
-├── streamlit-hello-world-app/  # Streamlit application
+├── streamlit-test-app/  # Streamlit application
 │   ├── app.py                  # Main Streamlit app
 │   ├── app.yaml                # App configuration
 │   └── requirements.txt        # Python dependencies
