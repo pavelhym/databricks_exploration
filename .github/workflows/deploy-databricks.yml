@@ -18,8 +18,8 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Target environment to deploy to'
-        required: true
+        description: 'Target environment to deploy to (default: dev)'
+        required: false
         default: 'dev'
         type: choice
         options:
@@ -74,14 +74,30 @@ jobs:
         id: target
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "target=${{ github.event.inputs.target }}" >> $GITHUB_OUTPUT
+            # Manual trigger - use the selected target or default to dev
+            SELECTED_TARGET="${{ github.event.inputs.target }}"
+            if [ -z "$SELECTED_TARGET" ] || [ "$SELECTED_TARGET" == "" ]; then
+              SELECTED_TARGET="dev"
+            fi
+            echo "target=$SELECTED_TARGET" >> $GITHUB_OUTPUT
+            echo "🎯 Manual trigger: deploying to $SELECTED_TARGET"
           elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            # Main branch → production
             echo "target=prod" >> $GITHUB_OUTPUT
+            echo "🎯 Main branch detected: deploying to prod"
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            # Develop branch → staging
             echo "target=staging" >> $GITHUB_OUTPUT
+            echo "🎯 Develop branch detected: deploying to staging"
           else
+            # Default to dev for all other branches
             echo "target=dev" >> $GITHUB_OUTPUT
+            echo "🎯 Default: deploying to dev"
           fi
+          echo "✅ Selected target: $(cat <<EOF
+          ${{ steps.target.outputs.target }}
+          EOF
+          )"
 
       - name: Validate bundle configuration
         env:
@@ -148,40 +164,42 @@ jobs:
           echo "⏳ Waiting for deletion to propagate..."
           sleep 3
 
+      - name: Create app if it doesn't exist (required for bundle)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        if: steps.app_check.outputs.app_exists != 'true'
+        continue-on-error: true
+        run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          APP_NAME="${{ steps.app_name.outputs.app_name }}"
+          APP_PATH="streamlit-hello-world-app"
+          
+          echo "🆕 Creating app first (bundle requires app to exist): $APP_NAME"
+          echo "📁 App source path: $APP_PATH"
+          
+          # Create the app using the source directory
+          # The app.yaml file should be in the source_code_path
+          databricks apps create \
+            --name "$APP_NAME" \
+            --source "$APP_PATH" || {
+            echo "⚠️ Failed to create app directly, bundle will try to create it"
+            echo "ℹ️ This is okay - bundle deploy should handle app creation"
+          }
+
       - name: Deploy bundle to Databricks (creates or updates app)
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          set -e
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
           echo "📦 Deploying bundle to ${{ steps.target.outputs.target }} environment..."
           
-          # Try to deploy the bundle
-          # The bundle should create the app if it doesn't exist, or update if it does
-          if databricks bundle deploy -t ${{ steps.target.outputs.target }}; then
-            echo "✅ Bundle deployed successfully"
-          else
-            DEPLOY_EXIT_CODE=$?
-            echo "⚠️ Bundle deploy returned exit code: $DEPLOY_EXIT_CODE"
-            
-            # If app doesn't exist error, the bundle should have created it
-            # But if it still fails, try to continue as the app might be created
-            if [ "${{ steps.app_check.outputs.app_exists }}" == "false" ]; then
-              echo "ℹ️ App didn't exist, checking if it was created anyway..."
-              sleep 2
-              if databricks apps get --name "${{ steps.app_name.outputs.app_name }}" > /dev/null 2>&1; then
-                echo "✅ App was created successfully despite the error"
-              else
-                echo "❌ App was not created. Please check the error above."
-                exit $DEPLOY_EXIT_CODE
-              fi
-            else
-              echo "❌ Bundle deploy failed for existing app"
-              exit $DEPLOY_EXIT_CODE
-            fi
-          fi
+          # Deploy the bundle - this will update the app if it exists, or the bundle should manage it
+          databricks bundle deploy -t ${{ steps.target.outputs.target }}
+          echo "✅ Bundle deployed successfully"
 
       - name: Grant database permissions to app
         env:
