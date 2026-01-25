@@ -36,6 +36,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
     
     steps:
       - name: Checkout code
@@ -51,12 +54,10 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
           echo "$HOME/.databricks/bin" >> $GITHUB_PATH
 
-      - name: Configure Databricks authentication
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      - name: Verify Databricks authentication
         run: |
-          databricks auth login --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
+          # Verify that environment variables are set
+          databricks auth env
 
       - name: Determine target environment
         id: target
@@ -88,6 +89,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
     
     steps:
       - name: Checkout code
@@ -103,12 +107,10 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
           echo "$HOME/.databricks/bin" >> $GITHUB_PATH
 
-      - name: Configure Databricks authentication
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      - name: Verify Databricks authentication
         run: |
-          databricks auth login --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
+          # Verify that environment variables are set
+          databricks auth env
 
       - name: Validate bundle configuration
         run: |
