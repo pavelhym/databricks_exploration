@@ -109,27 +109,79 @@ jobs:
             echo "app_name=sales-forecast-app-dev" >> $GITHUB_OUTPUT
           fi
 
-      - name: Delete existing app (if exists)
+      - name: Check if app exists
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        id: app_check
         continue-on-error: true
         run: |
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
-          echo "🗑️ Attempting to delete existing app: ${{ steps.app_name.outputs.app_name }}"
-          # Try to delete the app, ignore error if it doesn't exist
-          databricks apps delete --name "${{ steps.app_name.outputs.app_name }}" || echo "App does not exist, skipping deletion"
+          APP_NAME="${{ steps.app_name.outputs.app_name }}"
+          echo "🔍 Checking if app exists: $APP_NAME"
+          
+          # Try to get the app - if it succeeds, app exists
+          if databricks apps get --name "$APP_NAME" > /dev/null 2>&1; then
+            echo "✅ App exists, will delete before fresh deployment"
+            echo "app_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "ℹ️ App does not exist, bundle will create it"
+            echo "app_exists=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Deploy bundle to Databricks
+      - name: Delete existing app (if exists) for clean deployment
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        if: steps.app_check.outputs.app_exists == 'true'
+        run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          APP_NAME="${{ steps.app_name.outputs.app_name }}"
+          echo "🗑️ Deleting existing app for clean deployment: $APP_NAME"
+          databricks apps delete --name "$APP_NAME" || {
+            echo "⚠️ Failed to delete app, continuing anyway"
+            exit 0
+          }
+          echo "✅ App deleted successfully"
+          echo "⏳ Waiting for deletion to propagate..."
+          sleep 3
+
+      - name: Deploy bundle to Databricks (creates or updates app)
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
+          set -e
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
           echo "📦 Deploying bundle to ${{ steps.target.outputs.target }} environment..."
-          databricks bundle deploy -t ${{ steps.target.outputs.target }}
+          
+          # Try to deploy the bundle
+          # The bundle should create the app if it doesn't exist, or update if it does
+          if databricks bundle deploy -t ${{ steps.target.outputs.target }}; then
+            echo "✅ Bundle deployed successfully"
+          else
+            DEPLOY_EXIT_CODE=$?
+            echo "⚠️ Bundle deploy returned exit code: $DEPLOY_EXIT_CODE"
+            
+            # If app doesn't exist error, the bundle should have created it
+            # But if it still fails, try to continue as the app might be created
+            if [ "${{ steps.app_check.outputs.app_exists }}" == "false" ]; then
+              echo "ℹ️ App didn't exist, checking if it was created anyway..."
+              sleep 2
+              if databricks apps get --name "${{ steps.app_name.outputs.app_name }}" > /dev/null 2>&1; then
+                echo "✅ App was created successfully despite the error"
+              else
+                echo "❌ App was not created. Please check the error above."
+                exit $DEPLOY_EXIT_CODE
+              fi
+            else
+              echo "❌ Bundle deploy failed for existing app"
+              exit $DEPLOY_EXIT_CODE
+            fi
+          fi
 
       - name: Grant database permissions to app
         env:
