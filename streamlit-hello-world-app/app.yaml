@@ -1,0 +1,13 @@
+command: [
+  "streamlit", 
+  "run",
+  "app.py"
+]
+
+env:
+  # - name: DATABRICKS_TOKEN
+  #   value: dapi36661440d8a262f52944d129798ce424
+  - name: DATABRICKS_HOST
+    value: dbc-5eabeaeb-998c.cloud.databricks.com
+  - name: DATABRICKS_SQL_HTTP_PATH
+    value: /sql/1.0/warehouses/e2e25fceda9c1031
