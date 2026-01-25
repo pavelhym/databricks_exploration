@@ -84,11 +84,21 @@ jobs:
           fi
 
       - name: Validate bundle configuration
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
           databricks bundle validate -t ${{ steps.target.outputs.target }}
 
       - name: Deploy to Databricks
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
           databricks bundle deploy -t ${{ steps.target.outputs.target }}
 
       - name: Deployment summary
@@ -119,6 +129,9 @@ jobs:
           echo "$HOME/.databricks/bin" >> $GITHUB_PATH
 
       - name: Verify Databricks authentication
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           # Check if environment variables are set (without exposing the token)
           if [ -z "$DATABRICKS_HOST" ]; then
@@ -131,13 +144,28 @@ jobs:
           fi
           echo "✅ DATABRICKS_HOST is set: ${DATABRICKS_HOST}"
           echo "✅ DATABRICKS_TOKEN is set (length: ${#DATABRICKS_TOKEN})"
+          
+          # Export to ensure they're available to subprocesses
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          
           # Verify authentication
           databricks auth env
 
       - name: Validate bundle configuration
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
           databricks bundle validate -t dev
 
       - name: Dry-run deployment
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
           databricks bundle deploy -t dev --dry-run || true
