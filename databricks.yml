@@ -26,7 +26,8 @@ targets:
     workspace:
       host: https://dbc-5eabeaeb-998c.cloud.databricks.com
       # Root path where bundle resources are deployed
-      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+      # Must include username for development mode
+      root_path: ~/.bundle/${bundle.name}/${bundle.target}
     # App-specific configuration for dev
     resources:
       apps:
@@ -45,7 +46,7 @@ targets:
     mode: development
     workspace:
       host: https://dbc-5eabeaeb-998c.cloud.databricks.com
-      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+      root_path: ~/.bundle/${bundle.name}/${bundle.target}
     resources:
       apps:
         sales-forecast-app:
@@ -56,6 +57,7 @@ targets:
     mode: production
     workspace:
       host: https://dbc-5eabeaeb-998c.cloud.databricks.com
+      # Production can use shared path or user-specific path
       root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
     resources:
       apps:

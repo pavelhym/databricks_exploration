@@ -164,6 +164,27 @@ jobs:
           echo "⏳ Waiting for deletion to propagate..."
           sleep 3
 
+      - name: Verify source code files exist
+        run: |
+          echo "🔍 Verifying app source code..."
+          if [ ! -d "streamlit-hello-world-app" ]; then
+            echo "❌ ERROR: streamlit-hello-world-app directory not found!"
+            exit 1
+          fi
+          echo "✅ Found streamlit-hello-world-app directory"
+          echo "📄 Files to be deployed:"
+          ls -la streamlit-hello-world-app/ | head -20
+          if [ ! -f "streamlit-hello-world-app/app.yaml" ]; then
+            echo "⚠️ WARNING: app.yaml not found in streamlit-hello-world-app/"
+          else
+            echo "✅ Found app.yaml"
+          fi
+          if [ ! -f "streamlit-hello-world-app/app.py" ]; then
+            echo "⚠️ WARNING: app.py not found in streamlit-hello-world-app/"
+          else
+            echo "✅ Found app.py"
+          fi
+
       - name: Create app if it doesn't exist (required for bundle)
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -198,10 +219,17 @@ jobs:
           export DATABRICKS_TOKEN
           export DATABRICKS_BUNDLE_VAR_app_manager_email
           echo "📦 Deploying bundle to ${{ steps.target.outputs.target }} environment..."
+          echo "📁 Source code path: streamlit-hello-world-app"
+          echo "📝 This will upload all files from streamlit-hello-world-app/ to Databricks"
           
-          # Deploy the bundle - this will update the app if it exists, or the bundle should manage it
+          # Deploy the bundle - this uploads source code from source_code_path and updates the app
+          # The bundle deploy command:
+          # 1. Uploads all files from streamlit-hello-world-app/ to the workspace
+          # 2. Updates the app configuration
+          # 3. Ensures the app points to the latest code
           databricks bundle deploy -t ${{ steps.target.outputs.target }} --var app_manager_email="$DATABRICKS_BUNDLE_VAR_app_manager_email"
           echo "✅ Bundle deployed successfully"
+          echo "✅ App source code has been uploaded and updated"
 
       - name: Grant database permissions to app
         env:
