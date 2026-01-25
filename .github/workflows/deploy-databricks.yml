@@ -101,10 +101,12 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_BUNDLE_VAR_app_manager_email: ${{ secrets.DATABRICKS_APP_MANAGER_EMAIL || 'pavelhym@gmail.com' }}
         run: |
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
-          databricks bundle validate -t ${{ steps.target.outputs.target }}
+          export DATABRICKS_BUNDLE_VAR_app_manager_email
+          databricks bundle validate -t ${{ steps.target.outputs.target }} --var app_manager_email="$DATABRICKS_BUNDLE_VAR_app_manager_email"
 
       - name: Get app name for target environment
         id: app_name
@@ -190,13 +192,15 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_BUNDLE_VAR_app_manager_email: ${{ secrets.DATABRICKS_APP_MANAGER_EMAIL || 'pavelhym@gmail.com' }}
         run: |
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
+          export DATABRICKS_BUNDLE_VAR_app_manager_email
           echo "📦 Deploying bundle to ${{ steps.target.outputs.target }} environment..."
           
           # Deploy the bundle - this will update the app if it exists, or the bundle should manage it
-          databricks bundle deploy -t ${{ steps.target.outputs.target }}
+          databricks bundle deploy -t ${{ steps.target.outputs.target }} --var app_manager_email="$DATABRICKS_BUNDLE_VAR_app_manager_email"
           echo "✅ Bundle deployed successfully"
 
       - name: Grant database permissions to app
@@ -307,10 +311,12 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_BUNDLE_VAR_app_manager_email: ${{ secrets.DATABRICKS_APP_MANAGER_EMAIL || 'pavelhym@gmail.com' }}
         run: |
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
-          databricks bundle validate -t dev
+          export DATABRICKS_BUNDLE_VAR_app_manager_email
+          databricks bundle validate -t dev --var app_manager_email="$DATABRICKS_BUNDLE_VAR_app_manager_email"
 
       - name: Dry-run deployment
         env:
