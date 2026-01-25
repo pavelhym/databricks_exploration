@@ -20,12 +20,8 @@ targets:
     default: true
     workspace:
       host: https://dbc-5eabeaeb-998c.cloud.databricks.com
-    # Root path where bundle resources are deployed
-    root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
-    # Environment variables for dev environment
-    variables:
-      DATABRICKS_HOST: dbc-5eabeaeb-998c.cloud.databricks.com
-      DATABRICKS_SQL_HTTP_PATH: /sql/1.0/warehouses/e2e25fceda9c1031
+      # Root path where bundle resources are deployed
+      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
     # App-specific configuration for dev
     resources:
       apps:
@@ -38,10 +34,7 @@ targets:
     mode: development
     workspace:
       host: https://dbc-5eabeaeb-998c.cloud.databricks.com
-    root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
-    variables:
-      DATABRICKS_HOST: dbc-5eabeaeb-998c.cloud.databricks.com
-      DATABRICKS_SQL_HTTP_PATH: /sql/1.0/warehouses/e2e25fceda9c1031
+      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
     resources:
       apps:
         sales-forecast-app:
@@ -52,10 +45,7 @@ targets:
     mode: production
     workspace:
       host: https://dbc-5eabeaeb-998c.cloud.databricks.com
-    root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
-    variables:
-      DATABRICKS_HOST: dbc-5eabeaeb-998c.cloud.databricks.com
-      DATABRICKS_SQL_HTTP_PATH: /sql/1.0/warehouses/e2e25fceda9c1031
+      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
     resources:
       apps:
         sales-forecast-app:
