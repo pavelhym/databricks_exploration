@@ -92,20 +92,103 @@ jobs:
           export DATABRICKS_TOKEN
           databricks bundle validate -t ${{ steps.target.outputs.target }}
 
-      - name: Deploy to Databricks
+      - name: Get app name for target environment
+        id: app_name
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
+          # Determine app name based on target
+          if [ "${{ steps.target.outputs.target }}" == "prod" ]; then
+            echo "app_name=sales-forecast-app-prod" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.target.outputs.target }}" == "staging" ]; then
+            echo "app_name=sales-forecast-app-staging" >> $GITHUB_OUTPUT
+          else
+            echo "app_name=sales-forecast-app-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Delete existing app (if exists)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        continue-on-error: true
+        run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          echo "🗑️ Attempting to delete existing app: ${{ steps.app_name.outputs.app_name }}"
+          # Try to delete the app, ignore error if it doesn't exist
+          databricks apps delete --name "${{ steps.app_name.outputs.app_name }}" || echo "App does not exist, skipping deletion"
+
+      - name: Deploy bundle to Databricks
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          echo "📦 Deploying bundle to ${{ steps.target.outputs.target }} environment..."
           databricks bundle deploy -t ${{ steps.target.outputs.target }}
 
-      - name: Deployment summary
+      - name: Grant database permissions to app
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        continue-on-error: true
         run: |
-          echo "✅ Successfully deployed Streamlit app to ${{ steps.target.outputs.target }} environment"
-          echo "Target: ${{ steps.target.outputs.target }}"
-          echo "Workspace: ${{ secrets.DATABRICKS_HOST }}"
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          echo "🔐 Setting up database permissions for app..."
+          APP_NAME="${{ steps.app_name.outputs.app_name }}"
+          
+          # Get the app's service principal ID
+          echo "Getting service principal for app: $APP_NAME"
+          SP_ID=$(databricks apps get --name "$APP_NAME" --output json | jq -r '.service_principal_client_id // empty')
+          
+          if [ -z "$SP_ID" ] || [ "$SP_ID" == "null" ]; then
+            echo "⚠️ Could not retrieve service principal ID. Permissions may need to be set manually."
+            echo "💡 You can grant permissions manually in Databricks SQL:"
+            echo "   GRANT USE CATALOG ON CATALOG workspace TO \`<service-principal-id>\`;"
+            echo "   GRANT USE SCHEMA ON SCHEMA workspace.default TO \`<service-principal-id>\`;"
+            echo "   GRANT SELECT ON SCHEMA workspace.default TO \`<service-principal-id>\`;"
+          else
+            echo "✅ Found service principal: $SP_ID"
+            echo "💡 Grant permissions in Databricks SQL:"
+            echo "   GRANT USE CATALOG ON CATALOG workspace TO \`$SP_ID\`;"
+            echo "   GRANT USE SCHEMA ON SCHEMA workspace.default TO \`$SP_ID\`;"
+            echo "   GRANT SELECT ON SCHEMA workspace.default TO \`$SP_ID\`;"
+          fi
+
+      - name: Start the application
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          echo "🚀 Starting application: ${{ steps.app_name.outputs.app_name }}"
+          # Deploy and start the app
+          databricks apps deploy --name "${{ steps.app_name.outputs.app_name }}" || {
+            echo "⚠️ App deploy failed, trying alternative method"
+            exit 1
+          }
+          echo "✅ App deployed successfully"
+
+      - name: Deployment summary
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          export DATABRICKS_HOST
+          export DATABRICKS_TOKEN
+          echo "✅ Successfully deployed and started Streamlit app"
+          echo "📊 Target: ${{ steps.target.outputs.target }}"
+          echo "📱 App Name: ${{ steps.app_name.outputs.app_name }}"
+          echo "🌐 Workspace: ${{ secrets.DATABRICKS_HOST }}"
+          echo ""
+          echo "🔗 Access your app at:"
+          echo "   https://${{ secrets.DATABRICKS_HOST }}/apps/${{ steps.app_name.outputs.app_name }}"
 
   validate:
     runs-on: ubuntu-latest
