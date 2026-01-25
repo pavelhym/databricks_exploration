@@ -56,7 +56,18 @@ jobs:
 
       - name: Verify Databricks authentication
         run: |
-          # Verify that environment variables are set
+          # Check if environment variables are set (without exposing the token)
+          if [ -z "$DATABRICKS_HOST" ]; then
+            echo "❌ ERROR: DATABRICKS_HOST is not set"
+            exit 1
+          fi
+          if [ -z "$DATABRICKS_TOKEN" ]; then
+            echo "❌ ERROR: DATABRICKS_TOKEN is not set"
+            exit 1
+          fi
+          echo "✅ DATABRICKS_HOST is set: ${DATABRICKS_HOST}"
+          echo "✅ DATABRICKS_TOKEN is set (length: ${#DATABRICKS_TOKEN})"
+          # Verify authentication
           databricks auth env
 
       - name: Determine target environment
@@ -109,7 +120,18 @@ jobs:
 
       - name: Verify Databricks authentication
         run: |
-          # Verify that environment variables are set
+          # Check if environment variables are set (without exposing the token)
+          if [ -z "$DATABRICKS_HOST" ]; then
+            echo "❌ ERROR: DATABRICKS_HOST is not set"
+            exit 1
+          fi
+          if [ -z "$DATABRICKS_TOKEN" ]; then
+            echo "❌ ERROR: DATABRICKS_TOKEN is not set"
+            exit 1
+          fi
+          echo "✅ DATABRICKS_HOST is set: ${DATABRICKS_HOST}"
+          echo "✅ DATABRICKS_TOKEN is set (length: ${#DATABRICKS_TOKEN})"
+          # Verify authentication
           databricks auth env
 
       - name: Validate bundle configuration
