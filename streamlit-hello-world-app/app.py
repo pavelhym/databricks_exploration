@@ -13,9 +13,9 @@ from mlflow.tracking import MlflowClient
 
 from databricks import sql
 
-st.set_page_config(page_title="JARDIANCE Sales Forecast", layout="wide")
+st.set_page_config(page_title="Product X Sales Forecast", layout="wide")
 
-st.title("🏥 JARDIANCE Sales Forecasting")
+st.title("🏥 Product X Sales Forecasting")
 st.markdown("*Predictive analytics for pharmaceutical sales*")
 
 TOKEN = os.getenv("DATABRICKS_TOKEN")
@@ -360,8 +360,6 @@ tabs = st.tabs(
     [
         "ARIMA Forecasting",
         "XGBoost Point Prediction",
-        "MLflow inference",
-        "Anomaly Detection",
         "ARIMA MLflow",
         "XGBoost MLflow",
     ]
@@ -371,7 +369,7 @@ with tabs[0]:
     col1, col2 = st.columns([2, 1])
     with col1:
         st.subheader("📊 Generate Forecast")
-        st.write("Click to forecast JARDIANCE 7-count packages.")
+        st.write("Click to forecast Product X 7-count packages.")
     with col2:
         generate_btn = st.button(
             "🚀 Generate Forecast", type="primary", use_container_width=True
@@ -494,7 +492,7 @@ with tabs[0]:
                 )
             )
         fig.update_layout(
-            title="JARDIANCE 7-Count Package Forecast with Confidence Intervals",
+            title="Product X 7-Count Package Forecast with Confidence Intervals",
             xaxis_title="Month",
             yaxis_title="Forecasted Units",
             height=500,
@@ -547,7 +545,7 @@ with tabs[0]:
         d1.download_button(
             label="📥 Download CSV",
             data=csv,
-            file_name=f"jardiance_7count_forecast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            file_name=f"product_x_7count_forecast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
             use_container_width=True,
         )
@@ -568,7 +566,7 @@ with tabs[0]:
         d2.download_button(
             label="📥 Download JSON",
             data=json.dumps(json_export, indent=2),
-            file_name=f"jardiance_7count_forecast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            file_name=f"product_x_7count_forecast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json",
             use_container_width=True,
         )
@@ -582,7 +580,7 @@ with tabs[0]:
             st.markdown(
                 """
                 **Model Information:**
-                - Product: JARDIANCE 7-count
+                - Product: Product X 7-count
                 - Model: ARIMA
                 - Endpoint: `jardiance_arima_pkg_7`
                 - Confidence: 95% intervals
@@ -659,256 +657,6 @@ with tabs[1]:
 
 
 with tabs[2]:
-    st.subheader("🧪 MLflow Direct Inference")
-    st.info(
-        "This tab loads the XGBoost model directly from Unity Catalog for inference."
-    )
-
-    if st.button("Load Model from Unity Catalog", type="primary"):
-        try:
-            with st.spinner(f"Loading `{XGB_MODEL_NAME}` from Unity Catalog..."):
-                uc_model, model_version = load_uc_model(XGB_MODEL_NAME)
-                st.session_state["uc_model"] = uc_model
-                st.session_state["model_version"] = model_version
-            st.success(
-                f"✅ Loaded `{XGB_MODEL_NAME}` version {model_version} from Unity Catalog."
-            )
-        except Exception as exc:
-            st.error(f"❌ Failed to load MLflow model: {exc}")
-            import traceback
-
-            with st.expander("Error details"):
-                st.code(traceback.format_exc())
-
-    if "uc_model" in st.session_state:
-        st.success(
-            f"Model ready: version {st.session_state.get('model_version', 'unknown')}"
-        )
-        feature_cols, cat_cols, num_cols, cat_map, int_cols = parse_xgb_schema()
-
-        with st.form("mlflow_direct_form"):
-            st.markdown(
-                "Provide feature values; prediction runs on the MLflow-loaded model."
-            )
-            direct_inputs = {}
-            for col in cat_cols:
-                options = list(cat_map.get(col, {}).keys())
-                if not options:
-                    st.error(f"No categorical mapping available for '{col}'.")
-                    st.stop()
-                direct_inputs[col] = st.selectbox(f"{col} (UC)", options, index=0)
-            for col in num_cols:
-                if col in int_cols:
-                    direct_inputs[col] = st.number_input(
-                        f"{col} (UC)", value=0, step=1, format="%d"
-                    )
-                else:
-                    direct_inputs[col] = st.number_input(f"{col} (UC)", value=0.0)
-            run_btn = st.form_submit_button("Predict via MLflow", type="primary")
-
-        if run_btn:
-            encoded_payload = {}
-            for col in feature_cols:
-                val = direct_inputs[col]
-                if col in cat_cols:
-                    mapping = cat_map[col]
-                    if val not in mapping:
-                        st.error(f"Value '{val}' is not valid for '{col}'.")
-                        st.stop()
-                    encoded_payload[col] = int(mapping[val])
-                elif col in int_cols:
-                    encoded_payload[col] = int(val)
-                else:
-                    encoded_payload[col] = float(val)
-
-            input_df = pd.DataFrame([encoded_payload])
-            try:
-                prediction = st.session_state["uc_model"].predict(input_df)[0]
-                st.metric("Predicted Units Sold", f"{prediction:,.0f}")
-                with st.expander("Payload details"):
-                    st.json(
-                        {
-                            "request": encoded_payload,
-                            "dataframe": input_df.to_dict(orient="records"),
-                        }
-                    )
-            except Exception as exc:
-                st.error(f"❌ Inference failed: {exc}")
-    else:
-        st.warning("👆 Click 'Load Model from Unity Catalog' to begin.")
-
-
-def render_time_series(df, metric, title):
-    fig = go.Figure(
-        go.Scatter(
-            x=df["date"],
-            y=df[metric],
-            mode="lines+markers",
-            name=metric,
-            line=dict(color="#1f77b4", width=2),
-            marker=dict(size=4),
-        )
-    )
-    fig.update_layout(
-        title=title,
-        xaxis_title="Date",
-        yaxis_title=metric.replace("_", " ").title(),
-        template="plotly_white",
-        hovermode="x unified",
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def render_point_anomalies(x, y, result, metric, title):
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=y,
-            mode="lines",
-            name="Series",
-            line=dict(color="steelblue", width=2),
-        )
-    )
-    idx = result["anomaly_indices"]
-    if len(idx) > 0:
-        fig.add_trace(
-            go.Scatter(
-                x=x.iloc[idx],
-                y=y.iloc[idx],
-                mode="markers",
-                name=f"Anomalies ({len(idx)})",
-                marker=dict(color="red", size=10),
-            )
-        )
-    subtitle = (
-        "No point anomalies"
-        if result["num_anomalies"] == 0
-        else f"{result['num_anomalies']} point anomalies"
-    )
-    fig.update_layout(
-        title=f"{title}<br>{subtitle} | Z threshold = {result['z_threshold']}",
-        xaxis_title="Date",
-        yaxis_title=metric.replace("_", " ").title(),
-        template="plotly_white",
-        hovermode="x unified",
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-with tabs[3]:
-    # Import anomaly_detector_utils here to avoid import before Spark init
-    from anomaly_detector_utils import detect_point_anomalies
-
-    # Load data from Unity Catalog
-    data = read_table()
-
-    if data.empty:
-        st.error("No sales data available.")
-        st.stop()
-
-    # Convert year_month to date column
-    if "year_month" in data.columns and "date" not in data.columns:
-        # Check if year_month is already datetime, otherwise convert from string
-        if pd.api.types.is_datetime64_any_dtype(data["year_month"]):
-            data["date"] = data["year_month"]
-        else:
-            # Let pandas infer format automatically (handles both "YYYY-MM" and "YYYY-MM-DD")
-            data["date"] = pd.to_datetime(data["year_month"].astype(str) + "-01")
-
-    metric_choices = ["units_sold", "packages_sold", "gross_sales_dollars"]
-
-    filter_col1, filter_col2, filter_col3 = st.columns(3)
-    with filter_col1:
-        product_id = st.selectbox("Product ID", sorted(data["product_id"].unique()))
-    with filter_col2:
-        strength = st.selectbox(
-            "Strength",
-            sorted(
-                data.loc[data["product_id"] == product_id, "strength"].dropna().unique()
-            ),
-        )
-    with filter_col3:
-        package_size = st.selectbox(
-            "Package Size",
-            sorted(
-                data.loc[
-                    (data["product_id"] == product_id) & (data["strength"] == strength),
-                    "package_size",
-                ]
-                .dropna()
-                .unique()
-            ),
-        )
-
-    filtered = data[
-        (data["product_id"] == product_id)
-        & (data["strength"] == strength)
-        & (data["package_size"] == package_size)
-    ].sort_values("year_month")
-
-    if filtered.empty:
-        st.warning("No records found for the selected combination.")
-        st.stop()
-
-    metric = st.selectbox("Metric to analyze", metric_choices, index=0)
-
-    date_range = st.slider(
-        "Date range",
-        min_value=filtered["date"].min().date(),
-        max_value=filtered["date"].max().date(),
-        value=(
-            filtered["date"].min().date(),
-            filtered["date"].max().date(),
-        ),
-        format="YYYY-MM-DD",
-    )
-    start_date, end_date = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-    windowed = filtered[
-        (filtered["date"] >= start_date) & (filtered["date"] <= end_date)
-    ]
-
-    if windowed.empty:
-        st.warning("No data in the selected date range.")
-        st.stop()
-
-    st.subheader("Time Series Preview")
-    render_time_series(
-        windowed, metric, f"{metric.replace('_', ' ').title()} over Time"
-    )
-
-    z_threshold = st.slider(
-        "Z-score threshold", min_value=1.0, max_value=4.0, value=2.0, step=0.1
-    )
-
-    if st.button("Run Anomaly Detection", type="primary"):
-        result = detect_point_anomalies(
-            windowed[metric].values, z_threshold=z_threshold
-        )
-        st.success("Anomaly detection completed.")
-        render_point_anomalies(
-            windowed["date"],
-            windowed[metric],
-            result,
-            metric,
-            f"{metric.replace('_', ' ').title()} with Detected Anomalies",
-        )
-
-        anomaly_idx = result["anomaly_indices"]
-        if len(anomaly_idx) > 0:
-            anomalies_df = windowed.iloc[anomaly_idx][["date", metric]]
-            st.warning(f"{len(anomaly_idx)} anomalies detected.")
-            st.dataframe(
-                anomalies_df.rename(
-                    columns={"date": "Date", metric: metric.replace("_", " ").title()}
-                ),
-                use_container_width=True,
-            )
-        else:
-            st.info("No anomalies detected for the selected configuration.")
-
-
-with tabs[4]:
     st.subheader("📊 ARIMA Forecast via MLflow")
     st.info("This tab loads the ARIMA model directly from MLflow for forecasting.")
 
@@ -1021,7 +769,7 @@ with tabs[4]:
                     )
                 )
                 fig.update_layout(
-                    title="JARDIANCE 7-Count Forecast (MLflow Model)",
+                    title="Product X 7-Count Forecast (MLflow Model)",
                     xaxis_title="Month",
                     yaxis_title="Forecasted Units",
                     height=500,
@@ -1050,7 +798,7 @@ with tabs[4]:
         st.warning("👆 Click 'Load ARIMA Model from MLflow' to begin.")
 
 
-with tabs[5]:
+with tabs[3]:
     st.subheader("🎯 XGBoost Prediction via MLflow")
     st.info("This tab loads the XGBoost model directly from MLflow for prediction.")
 
