@@ -2,9 +2,7 @@ name: Deploy Streamlit App to Databricks
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    # Trigger on all branches (main/develop will go to prod/staging, others to dev)
     paths:
       - 'streamlit-hello-world-app/**'
       - 'databricks.yml'
