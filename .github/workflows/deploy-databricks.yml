@@ -3,16 +3,18 @@ name: Deploy Streamlit App to Databricks
 on:
   push:
     # Trigger on all branches (main/develop will go to prod/staging, others to dev)
-    paths:
-      - 'streamlit-hello-world-app/**'
-      - 'databricks.yml'
-      - '.github/workflows/deploy-databricks.yml'
+    # Removed paths filter to trigger on any push - you can add it back if needed
+    # paths:
+    #   - 'streamlit-hello-world-app/**'
+    #   - 'databricks.yml'
+    #   - '.github/workflows/deploy-databricks.yml'
   pull_request:
     branches:
       - main
-    paths:
-      - 'streamlit-hello-world-app/**'
-      - 'databricks.yml'
+    # Removed paths filter for PRs as well
+    # paths:
+    #   - 'streamlit-hello-world-app/**'
+    #   - 'databricks.yml'
   workflow_dispatch:
     inputs:
       target:
