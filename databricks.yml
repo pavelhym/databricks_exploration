@@ -1,0 +1,62 @@
+# This is a Databricks asset bundle definition for databricks.
+# The Databricks extension requires databricks.yml configuration file.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+
+bundle:
+  name: databricks
+
+# Define the Streamlit app as an asset
+resources:
+  apps:
+    sales-forecast-app:
+      name: sales-forecast-app
+      # Path to the app directory containing app.yaml (relative to bundle root)
+      source_code_path: streamlit-hello-world-app
+      description: "JARDIANCE Sales Forecasting Streamlit App"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-5eabeaeb-998c.cloud.databricks.com
+    # Root path where bundle resources are deployed
+    root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+    # Environment variables for dev environment
+    variables:
+      DATABRICKS_HOST: dbc-5eabeaeb-998c.cloud.databricks.com
+      DATABRICKS_SQL_HTTP_PATH: /sql/1.0/warehouses/e2e25fceda9c1031
+    # App-specific configuration for dev
+    resources:
+      apps:
+        sales-forecast-app:
+          # Override app name for dev environment
+          name: sales-forecast-app-dev
+
+  # Staging environment
+  staging:
+    mode: development
+    workspace:
+      host: https://dbc-5eabeaeb-998c.cloud.databricks.com
+    root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      DATABRICKS_HOST: dbc-5eabeaeb-998c.cloud.databricks.com
+      DATABRICKS_SQL_HTTP_PATH: /sql/1.0/warehouses/e2e25fceda9c1031
+    resources:
+      apps:
+        sales-forecast-app:
+          name: sales-forecast-app-staging
+
+  # Production environment
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-5eabeaeb-998c.cloud.databricks.com
+    root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      DATABRICKS_HOST: dbc-5eabeaeb-998c.cloud.databricks.com
+      DATABRICKS_SQL_HTTP_PATH: /sql/1.0/warehouses/e2e25fceda9c1031
+    resources:
+      apps:
+        sales-forecast-app:
+          name: sales-forecast-app-prod

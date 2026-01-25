@@ -1,0 +1,119 @@
+name: Deploy Streamlit App to Databricks
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'streamlit-hello-world-app/**'
+      - 'databricks.yml'
+      - '.github/workflows/deploy-databricks.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'streamlit-hello-world-app/**'
+      - 'databricks.yml'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  DATABRICKS_CLI_VERSION: 0.240.0
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          echo "$HOME/.databricks/bin" >> $GITHUB_PATH
+
+      - name: Configure Databricks authentication
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks auth login --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
+
+      - name: Determine target environment
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "target=${{ github.event.inputs.target }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "target=prod" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "target=staging" >> $GITHUB_OUTPUT
+          else
+            echo "target=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate bundle configuration
+        run: |
+          databricks bundle validate -t ${{ steps.target.outputs.target }}
+
+      - name: Deploy to Databricks
+        run: |
+          databricks bundle deploy -t ${{ steps.target.outputs.target }}
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Successfully deployed Streamlit app to ${{ steps.target.outputs.target }} environment"
+          echo "Target: ${{ steps.target.outputs.target }}"
+          echo "Workspace: ${{ secrets.DATABRICKS_HOST }}"
+
+  validate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          echo "$HOME/.databricks/bin" >> $GITHUB_PATH
+
+      - name: Configure Databricks authentication
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks auth login --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
+
+      - name: Validate bundle configuration
+        run: |
+          databricks bundle validate -t dev
+
+      - name: Dry-run deployment
+        run: |
+          databricks bundle deploy -t dev --dry-run || true

@@ -5,6 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
+.venv2
 
 # Distribution / packaging
 .Python
@@ -167,3 +168,8 @@ yarn-error.log*
 /blob-report/
 /playwright/*
 tsconfig.tsbuildinfo
+
+.databricks
+
+
+/presentation
