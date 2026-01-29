@@ -3,18 +3,9 @@ name: Deploy Streamlit App to Databricks
 on:
   push:
     # Trigger on all branches (main/develop will go to prod/staging, others to dev)
-    # Removed paths filter to trigger on any push - you can add it back if needed
-    # paths:
-    #   - 'streamlit-test-app/**'
-    #   - 'databricks.yml'
-    #   - '.github/workflows/deploy-databricks.yml'
   pull_request:
     branches:
       - main
-    # Removed paths filter for PRs as well
-    # paths:
-    #   - 'streamlit-test-app/**'
-    #   - 'databricks.yml'
   workflow_dispatch:
     inputs:
       target:
@@ -58,15 +49,15 @@ jobs:
         run: |
           # Check if environment variables are set (without exposing the token)
           if [ -z "$DATABRICKS_HOST" ]; then
-            echo "❌ ERROR: DATABRICKS_HOST is not set"
+            echo "ERROR: DATABRICKS_HOST is not set"
             exit 1
           fi
           if [ -z "$DATABRICKS_TOKEN" ]; then
-            echo "❌ ERROR: DATABRICKS_TOKEN is not set"
+            echo "ERROR: DATABRICKS_TOKEN is not set"
             exit 1
           fi
-          echo "✅ DATABRICKS_HOST is set: ${DATABRICKS_HOST}"
-          echo "✅ DATABRICKS_TOKEN is set (length: ${#DATABRICKS_TOKEN})"
+          echo "DATABRICKS_HOST is set: ${DATABRICKS_HOST}"
+          echo "DATABRICKS_TOKEN is set (length: ${#DATABRICKS_TOKEN})"
           # Verify authentication
           databricks auth env
 
@@ -80,21 +71,21 @@ jobs:
               SELECTED_TARGET="dev"
             fi
             echo "target=$SELECTED_TARGET" >> $GITHUB_OUTPUT
-            echo "🎯 Manual trigger: deploying to $SELECTED_TARGET"
+            echo "Manual trigger: deploying to $SELECTED_TARGET"
           elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
             # Main branch → production
             echo "target=prod" >> $GITHUB_OUTPUT
-            echo "🎯 Main branch detected: deploying to prod"
+            echo "Main branch detected: deploying to prod"
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
             # Develop branch → staging
             echo "target=staging" >> $GITHUB_OUTPUT
-            echo "🎯 Develop branch detected: deploying to staging"
+            echo "Develop branch detected: deploying to staging"
           else
             # Default to dev for all other branches
             echo "target=dev" >> $GITHUB_OUTPUT
-            echo "🎯 Default: deploying to dev"
+            echo "Default: deploying to dev"
           fi
-          echo "✅ Selected target: $(cat <<EOF
+          echo "Selected target: $(cat <<EOF
           ${{ steps.target.outputs.target }}
           EOF
           )"
@@ -137,14 +128,14 @@ jobs:
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
           APP_NAME="${{ steps.app_name.outputs.app_name }}"
-          echo "🔍 Checking if app exists: $APP_NAME"
+          echo "Checking if app exists: $APP_NAME"
           
           # Try to get the app - if it succeeds, app exists
           if databricks apps get --name "$APP_NAME" > /dev/null 2>&1; then
-            echo "✅ App exists, will delete before fresh deployment"
+            echo "App exists, will delete before fresh deployment"
             echo "app_exists=true" >> $GITHUB_OUTPUT
           else
-            echo "ℹ️ App does not exist, bundle will create it"
+            echo "ℹApp does not exist, bundle will create it"
             echo "app_exists=false" >> $GITHUB_OUTPUT
           fi
 
@@ -157,34 +148,34 @@ jobs:
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
           APP_NAME="${{ steps.app_name.outputs.app_name }}"
-          echo "🗑️ Deleting existing app for clean deployment: $APP_NAME"
+          echo "Deleting existing app for clean deployment: $APP_NAME"
           databricks apps delete --name "$APP_NAME" || {
-            echo "⚠️ Failed to delete app, continuing anyway"
+            echo "Failed to delete app, continuing anyway"
             exit 0
           }
-          echo "✅ App deleted successfully"
-          echo "⏳ Waiting for deletion to propagate..."
+          echo "App deleted successfully"
+          echo "Waiting for deletion to propagate..."
           sleep 3
 
       - name: Verify source code files exist
         run: |
-          echo "🔍 Verifying app source code..."
+          echo " Verifying app source code..."
           if [ ! -d "streamlit-test-app" ]; then
-            echo "❌ ERROR: streamlit-test-app directory not found!"
+            echo "ERROR: streamlit-test-app directory not found!"
             exit 1
           fi
-          echo "✅ Found streamlit-test-app directory"
-          echo "📄 Files to be deployed:"
+          echo "Found streamlit-test-app directory"
+          echo "Files to be deployed:"
           ls -la streamlit-test-app/ | head -20
           if [ ! -f "streamlit-test-app/app.yaml" ]; then
-            echo "⚠️ WARNING: app.yaml not found in streamlit-test-app/"
+            echo "WARNING: app.yaml not found in streamlit-test-app/"
           else
-            echo "✅ Found app.yaml"
+            echo "Found app.yaml"
           fi
           if [ ! -f "streamlit-test-app/app.py" ]; then
-            echo "⚠️ WARNING: app.py not found in streamlit-test-app/"
+            echo "WARNING: app.py not found in streamlit-test-app/"
           else
-            echo "✅ Found app.py"
+            echo "Found app.py"
           fi
 
       - name: Create app if it doesn't exist (required for bundle)
@@ -199,16 +190,16 @@ jobs:
           APP_NAME="${{ steps.app_name.outputs.app_name }}"
           APP_PATH="streamlit-test-app"
           
-          echo "🆕 Creating app first (bundle requires app to exist): $APP_NAME"
-          echo "📁 App source path: $APP_PATH"
+          echo "Creating app first (bundle requires app to exist): $APP_NAME"
+          echo "App source path: $APP_PATH"
           
           # Create the app using the source directory
           # The app.yaml file should be in the source_code_path
           databricks apps create \
             --name "$APP_NAME" \
             --source "$APP_PATH" || {
-            echo "⚠️ Failed to create app directly, bundle will try to create it"
-            echo "ℹ️ This is okay - bundle deploy should handle app creation"
+            echo "Failed to create app directly, bundle will try to create it"
+            echo "This is okay - bundle deploy should handle app creation"
           }
 
       - name: Deploy bundle to Databricks (creates or updates app)
@@ -220,9 +211,9 @@ jobs:
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
           export DATABRICKS_BUNDLE_VAR_app_manager_email
-          echo "📦 Deploying bundle to ${{ steps.target.outputs.target }} environment..."
-          echo "📁 Source code path: streamlit-test-app"
-          echo "📝 This will upload all files from streamlit-test-app/ to Databricks"
+          echo "Deploying bundle to ${{ steps.target.outputs.target }} environment..."
+          echo "Source code path: streamlit-test-app"
+          echo "This will upload all files from streamlit-test-app/ to Databricks"
           
           # Deploy the bundle - this uploads source code from source_code_path and updates the app
           # The bundle deploy command:
@@ -230,8 +221,8 @@ jobs:
           # 2. Updates the app configuration
           # 3. Ensures the app points to the latest code
           databricks bundle deploy -t ${{ steps.target.outputs.target }} --var app_manager_email="$DATABRICKS_BUNDLE_VAR_app_manager_email"
-          echo "✅ Bundle deployed successfully"
-          echo "✅ App source code has been uploaded and updated"
+          echo "Bundle deployed successfully"
+          echo "App source code has been uploaded and updated"
 
       - name: Grant database permissions to app
         env:
@@ -241,7 +232,7 @@ jobs:
         run: |
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
-          echo "🔐 Setting up database permissions for app..."
+          echo "Setting up database permissions for app..."
           APP_NAME="${{ steps.app_name.outputs.app_name }}"
           
           # Get the app's service principal ID
@@ -249,14 +240,14 @@ jobs:
           SP_ID=$(databricks apps get --name "$APP_NAME" --output json | jq -r '.service_principal_client_id // empty')
           
           if [ -z "$SP_ID" ] || [ "$SP_ID" == "null" ]; then
-            echo "⚠️ Could not retrieve service principal ID. Permissions may need to be set manually."
-            echo "💡 You can grant permissions manually in Databricks SQL:"
+            echo "Could not retrieve service principal ID. Permissions may need to be set manually."
+            echo "You can grant permissions manually in Databricks SQL:"
             echo "   GRANT USE CATALOG ON CATALOG workspace TO \`<service-principal-id>\`;"
             echo "   GRANT USE SCHEMA ON SCHEMA workspace.default TO \`<service-principal-id>\`;"
             echo "   GRANT SELECT ON SCHEMA workspace.default TO \`<service-principal-id>\`;"
           else
-            echo "✅ Found service principal: $SP_ID"
-            echo "💡 Grant permissions in Databricks SQL:"
+            echo "Found service principal: $SP_ID"
+            echo "Grant permissions in Databricks SQL:"
             echo "   GRANT USE CATALOG ON CATALOG workspace TO \`$SP_ID\`;"
             echo "   GRANT USE SCHEMA ON SCHEMA workspace.default TO \`$SP_ID\`;"
             echo "   GRANT SELECT ON SCHEMA workspace.default TO \`$SP_ID\`;"
@@ -272,13 +263,13 @@ jobs:
           export DATABRICKS_TOKEN
           export DATABRICKS_BUNDLE_VAR_app_manager_email
           APP_NAME="${{ steps.app_name.outputs.app_name }}"
-          echo "🚀 Starting application: $APP_NAME"
+          echo "Starting application: $APP_NAME"
           
           # Try using bundle run first (recommended way)
           if databricks bundle run sales-forecast-app -t ${{ steps.target.outputs.target }} --var app_manager_email="$DATABRICKS_BUNDLE_VAR_app_manager_email"; then
-            echo "✅ App started via bundle run"
+            echo "App started via bundle run"
           else
-            echo "⚠️ Bundle run failed, trying direct apps deploy..."
+            echo "Bundle run failed, trying direct apps deploy..."
             # Fallback: use apps deploy with app name as positional argument
             # Get the workspace path where bundle deployed the app
             BUNDLE_PATH="~/.bundle/databricks/${{ steps.target.outputs.target }}/files/streamlit-test-app"
@@ -288,13 +279,13 @@ jobs:
             
             # Deploy the app using the source code path from bundle
             databricks apps deploy "$APP_NAME" --source-code-path "$BUNDLE_PATH" || {
-              echo "⚠️ App deploy failed"
-              echo "ℹ️ The app code has been uploaded by bundle deploy"
-              echo "💡 You may need to start it manually from Databricks UI:"
+              echo "App deploy failed"
+              echo "ℹThe app code has been uploaded by bundle deploy"
+              echo "You may need to start it manually from Databricks UI:"
               echo "   https://$DATABRICKS_HOST/apps/$APP_NAME"
               exit 0  # Don't fail - bundle deploy succeeded, just starting failed
             }
-            echo "✅ App deployed and started successfully"
+            echo "App deployed and started successfully"
           fi
 
       - name: Deployment summary
@@ -304,12 +295,12 @@ jobs:
         run: |
           export DATABRICKS_HOST
           export DATABRICKS_TOKEN
-          echo "✅ Successfully deployed and started Streamlit app"
-          echo "📊 Target: ${{ steps.target.outputs.target }}"
-          echo "📱 App Name: ${{ steps.app_name.outputs.app_name }}"
-          echo "🌐 Workspace: ${{ secrets.DATABRICKS_HOST }}"
+          echo "Successfully deployed and started Streamlit app"
+          echo "Target: ${{ steps.target.outputs.target }}"
+          echo "App Name: ${{ steps.app_name.outputs.app_name }}"
+          echo "Workspace: ${{ secrets.DATABRICKS_HOST }}"
           echo ""
-          echo "🔗 Access your app at:"
+          echo "Access your app at:"
           echo "   https://${{ secrets.DATABRICKS_HOST }}/apps/${{ steps.app_name.outputs.app_name }}"
 
   validate:
@@ -340,15 +331,15 @@ jobs:
         run: |
           # Check if environment variables are set (without exposing the token)
           if [ -z "$DATABRICKS_HOST" ]; then
-            echo "❌ ERROR: DATABRICKS_HOST is not set"
+            echo " ERROR: DATABRICKS_HOST is not set"
             exit 1
           fi
           if [ -z "$DATABRICKS_TOKEN" ]; then
-            echo "❌ ERROR: DATABRICKS_TOKEN is not set"
+            echo " ERROR: DATABRICKS_TOKEN is not set"
             exit 1
           fi
-          echo "✅ DATABRICKS_HOST is set: ${DATABRICKS_HOST}"
-          echo "✅ DATABRICKS_TOKEN is set (length: ${#DATABRICKS_TOKEN})"
+          echo " DATABRICKS_HOST is set: ${DATABRICKS_HOST}"
+          echo " DATABRICKS_TOKEN is set (length: ${#DATABRICKS_TOKEN})"
           
           # Export to ensure they're available to subprocesses
           export DATABRICKS_HOST

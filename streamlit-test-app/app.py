@@ -16,7 +16,7 @@ from databricks import sql
 st.set_page_config(page_title="Product X Sales Forecast", layout="wide")
 
 st.title("🏥 Product X Sales Forecasting")
-st.markdown("*Predictive analytics for pharmaceutical sales*")
+st.markdown("*Predictive analytics for sales*")
 
 TOKEN = os.getenv("DATABRICKS_TOKEN")
 
